@@ -15,3 +15,7 @@ python3 main.py 방송인의_닉네임
 ```
 
 3. 컴퓨터를 계속 켜놓고 있어야 다운로드가 가능합니다. 방송이 시작되면 자동으로 다운로드를 시작합니다.
+
+## 요구사항
+- Python 3.6 이상
+- [streamlink](https://streamlink.github.io)
