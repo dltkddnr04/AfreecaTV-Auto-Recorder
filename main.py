@@ -8,8 +8,9 @@ import streamlink
 import platform
 import subprocess
 
-user_name = "dltkddnr04"
-user_password = "Xt5r]r:GCWaC"
+# 여기에 아이디와 비밀번호를 입력해주세요.
+user_name = "user_name"
+user_password = "user_password"
 
 def console_print(message):
     time = datetime.datetime.today().strftime('%Y-%m-%d %H:%M:%S')
