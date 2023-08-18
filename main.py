@@ -9,8 +9,10 @@ import platform
 import subprocess
 
 # 여기에 아이디와 비밀번호를 입력해주세요.
-user_name = "dltkddnr04"
-user_password = "2pN-Wsf-uCH-k4g"
+with open('config.json', 'r') as f:
+    config = json.load(f)
+    user_name = config['user_name']
+    user_password = config['user_password']
 
 def console_print(message):
     time = datetime.datetime.today().strftime('%Y-%m-%d %H:%M:%S')
