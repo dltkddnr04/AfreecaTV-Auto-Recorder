@@ -1,2 +1,0 @@
-command
-streamlink https://play.afreecatv.com/[user_login] original -o [filename].ts --afreeca-username dltkddnr04 --afreeca-password Xt5r]r:GCWaC
