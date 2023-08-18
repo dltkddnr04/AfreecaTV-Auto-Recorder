@@ -1,0 +1,11 @@
+:status: 204
+Pragma: no-cache
+Access-Control-Allow-Credentials: true
+Content-Type: text/plain
+Cache-Control: no-cache, no-store, must-revalidate
+Access-Control-Allow-Origin: https://play.afreecatv.com
+Date: Thu, 17 Aug 2023 13:54:18 GMT
+Expires: Fri, 01 Jan 1990 00:00:00 GMT
+Cross-Origin-Resource-Policy: cross-origin
+Server: Golfe2
+Alt-Svc: h3=":443"; ma=2592000,h3-29=":443"; ma=2592000
