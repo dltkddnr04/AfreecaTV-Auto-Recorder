@@ -9,8 +9,8 @@ import platform
 import subprocess
 
 # 여기에 아이디와 비밀번호를 입력해주세요.
-user_name = "user_name"
-user_password = "user_password"
+user_name = "dltkddnr04"
+user_password = "2pN-Wsf-uCH-k4g"
 
 def console_print(message):
     time = datetime.datetime.today().strftime('%Y-%m-%d %H:%M:%S')
@@ -32,7 +32,7 @@ def stream_detect(user_login):
         return False
 
 def get_stream_m3u8_streamlink(user_login):
-    stream_url = "https://play.afreecatv.com/" + user_login
+    stream_url = "play.afreecatv.com/" + user_login
     streams = streamlink.streams(stream_url)
     
     list = {}
@@ -52,9 +52,9 @@ def download_stream_legacy(user_login, extension):
 
     if platform.system() == "Windows":
         CREATE_NO_WINDOW = 0x08000000
-        subprocess.run(["streamlink", stream_url, "best", "-o", path, "--afreeca-username", user_name, "--afreeca-password", user_password], creationflags=CREATE_NO_WINDOW)
+        subprocess.run(["streamlink", stream_url, "best", "-o", path, "--afreeca-username", user_name, "--afreeca-password", user_password, "--afreeca-purge-credentials"], creationflags=CREATE_NO_WINDOW)
     else:
-        subprocess.run(["streamlink", stream_url, "best", "-o", path, "--afreeca-username", user_name, "--afreeca-password", user_password])
+        subprocess.run(["streamlink", stream_url, "best", "-o", path, "--afreeca-username", user_name, "--afreeca-password", user_password, "--afreeca-purge-credentials"])
     return
 
 console_print("Program started")
