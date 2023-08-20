@@ -19,4 +19,5 @@ python3 main.py 방송인의_닉네임
 
 ## 요구사항
 - Python 3.6 이상
+- requests
 - [streamlink](https://streamlink.github.io)
