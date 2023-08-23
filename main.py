@@ -15,7 +15,7 @@ with open('config.json', 'r') as f:
     user_password = config['user_password']
 
 def console_print(message):
-    time = datetime.datetime.today().strftime('%Y-%m-%d %H:%M:%S')
+    time = datetime.datetime.today().strftime('%Y-%m-%dT%H:%M:%S')
     print("[{}] {}".format(time, message))
 
 def stream_detect(user_login):
