@@ -44,7 +44,7 @@ def get_stream_m3u8_streamlink(user_login):
     return list
 
 def basic_file_info(user_login, extension):
-    date = datetime.datetime.today().strftime('%Y-%m-%d %H-%M-%S')
+    date = datetime.datetime.today().strftime('%Y-%m-%dT%H-%M-%S')
     path = './' + user_login + '/' + date + '.' + extension
     return path
 
