@@ -1,18 +1,18 @@
 import requests
 
-username = "" # 계정 아이디
-password = "" # 계정 비번
-stream_username = "" # 방송 아이디
-stream_password = "" # 비번방 비번
-quality = "original" # original, hd, sd
+USERNAME = "" # 계정 아이디
+PASSWORD = "" # 계정 비번
+STREAM_USERNAME = "" # 방송 아이디
+STREAM_PASSWORD = "" # 비번방 비번
+QUALITY = "original" # original, hd, sd
 
 # 성인방송 시청을 위한 세션 생성
 url = "https://login.afreecatv.com/app/LoginAction.php"
 data = {
     "szWork": "login",
     "szType": "json",
-    "szUid": username,
-    "szPassword": password,
+    "szUid": USERNAME,
+    "szPassword": PASSWORD,
     "isSaveId": "true",
     "isSavePw": "false",
     "isSaveJoin": "false",
@@ -22,17 +22,27 @@ data = {
 req = requests.post(url, data=data)
 cookies = req.cookies
 cookie_dict = requests.utils.dict_from_cookiejar(cookies)
+print(cookie_dict)
 
 # m3u8 url 요청
-url = f'https://live.afreecatv.com/afreeca/player_live_api.php'
+url = 'https://live.afreecatv.com/afreeca/player_live_api.php'
 data = {
-    "bid": stream_username,
-    "quality": quality,
+    "bid": STREAM_USERNAME,
+    "quality": QUALITY,
     "type": "aid",
-    "pwd": stream_password,
+    "pwd": STREAM_PASSWORD,
     "stream_type": "common",
 }
 
 req = requests.post(url, data=data, cookies=cookie_dict)
 result = req.json()
-print("https://live-global-cdn-v02.afreecatv.com/live-stm-16/auth_playlist.m3u8?aid=" + result['CHANNEL']['AID'])
+
+if result['CHANNEL']['RESULT'] == 0:
+    print("방송중이 아님")
+elif result['CHANNEL']['RESULT'] == 1:
+    m3u8_url = "https://live-global-cdn-v02.afreecatv.com/live-stm-16/auth_playlist.m3u8?aid=" + result['CHANNEL']['AID']
+    print(m3u8_url)
+elif result['CHANNEL']['RESULT'] == -6:
+    print("로그인 필요")
+else:
+    print("알 수 없는 오류")

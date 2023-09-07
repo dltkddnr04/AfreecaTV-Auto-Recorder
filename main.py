@@ -8,15 +8,34 @@ import streamlink
 import platform
 import subprocess
 
-# 여기에 아이디와 비밀번호를 입력해주세요.
 with open('config.json', 'r') as f:
     config = json.load(f)
-    user_name = config['user_name']
-    user_password = config['user_password']
+    USER_NAME = config['user_name']
+    USER_PASSWORD = config['user_password']
+
+cookie_dict = None
 
 def console_print(message):
     time = datetime.datetime.today().strftime('%Y-%m-%dT%H-%M-%S')
     print("[{}] {}".format(time, message))
+
+def get_cookie():
+    global cookie_dict
+    url = "https://login.afreecatv.com/app/LoginAction.php"
+    data = {
+        "szWork": "login",
+        "szType": "json",
+        "szUid": USER_NAME,
+        "szPassword": USER_PASSWORD,
+        "isSaveId": "true",
+        "isSavePw": "false",
+        "isSaveJoin": "false",
+        "isLoginRetain": "Y"
+    }
+
+    req = requests.post(url, data=data)
+    cookies = req.cookies
+    cookie_dict = requests.utils.dict_from_cookiejar(cookies)
 
 def stream_detect(user_login):
     url = f'https://live.afreecatv.com/afreeca/player_live_api.php?bjid={user_login}'
@@ -43,20 +62,58 @@ def get_stream_m3u8_streamlink(user_login):
 
     return list
 
+def get_stream_m3u8_direct(user_login):
+    url = 'https://live.afreecatv.com/afreeca/player_live_api.php'
+    data = {
+        "bid": user_login,
+        "quality": "original",
+        "type": "aid",
+        "pwd": "",
+        "stream_type": "common",
+    }
+
+    req = requests.post(url, data=data, cookies=cookie_dict)
+    result = req.json()
+
+    if result['CHANNEL']['RESULT'] == 0:
+        # 방송중이 아님
+        return None
+    elif result['CHANNEL']['RESULT'] == 1:
+        # 방송중
+        m3u8_url = "https://live-global-cdn-v02.afreecatv.com/live-stm-16/auth_playlist.m3u8?aid=" + result['CHANNEL']['AID']
+        return m3u8_url
+    elif result['CHANNEL']['RESULT'] == -6:
+        # 로그인 필요
+        get_cookie()
+        return get_stream_m3u8_direct(user_login)
+    else:
+        # 알 수 없는 오류
+        return None
+
 def basic_file_info(user_login, extension):
     date = datetime.datetime.today().strftime('%Y-%m-%dT%H-%M-%S')
     path = './' + user_login + '/' + date + '.' + extension
     return path
 
-def download_stream_legacy(user_login, extension):
+def download_stream_m3u8_legacy(user_login, m3u8_url, extension):
+    path = basic_file_info(user_login, extension)
+
+    if platform.system() == "Windows":
+        CREATE_NO_WINDOW = 0x08000000
+        subprocess.run(["streamlink", m3u8_url, "best", "-o", path], creationflags=CREATE_NO_WINDOW)
+    else:
+        subprocess.run(["streamlink", m3u8_url, "best", "-o", path])
+    return
+
+def download_stream_legay(user_login, extension):
     path = basic_file_info(user_login, extension)
     stream_url = 'https://play.afreecatv.com/' + user_login
 
     if platform.system() == "Windows":
         CREATE_NO_WINDOW = 0x08000000
-        subprocess.run(["streamlink", stream_url, "best", "-o", path, "--afreeca-username", user_name, "--afreeca-password", user_password, "--afreeca-purge-credentials"], creationflags=CREATE_NO_WINDOW)
+        subprocess.run(["streamlink", stream_url, "best", "-o", path, "--afreeca-username", USER_NAME, "--afreeca-password", USER_PASSWORD, "--afreeca-purge-credentials"], creationflags=CREATE_NO_WINDOW)
     else:
-        subprocess.run(["streamlink", stream_url, "best", "-o", path, "--afreeca-username", user_name, "--afreeca-password", user_password, "--afreeca-purge-credentials"])
+        subprocess.run(["streamlink", stream_url, "best", "-o", path, "--afreeca-username", USER_NAME, "--afreeca-password", USER_PASSWORD, "--afreeca-purge-credentials"])
     return
 
 console_print("Program started")
@@ -89,10 +146,11 @@ while True:
             console_print("[{user_login}] Waiting to start streaming".format(user_login=user_login))
             repeat_check = False
         
-        if stream_detect(user_login):
+        stream_m3u8 = get_stream_m3u8_direct(user_login)
+        if stream_m3u8 is not None:
             console_print("[{user_login}] Stream started".format(user_login=user_login))
             try:
-                download_stream_legacy(user_login, "ts")
+                download_stream_m3u8_legacy(user_login, stream_m3u8, "ts")
             except Exception as e:
                 # print("Error: {}".format(e))
                 continue
