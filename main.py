@@ -15,6 +15,29 @@ with open('config.json', 'r') as f:
 
 cookie_dict = None
 
+def id_or_login_detect(value):
+    return value.isnumeric()
+
+def get_id_from_login(user_login):
+    url = f'https://live.afreecatv.com/afreeca/player_live_api.php?bid={user_login}'
+    data = {
+        'bid': user_login,
+        'type': 'live'
+    }
+    req = requests.post(url, data=data)
+    result = req.json()
+    return result['CHANNEL']['BNO']
+
+def get_login_from_id(user_id):
+    url = f'https://live.afreecatv.com/afreeca/player_live_api.php?bno={user_login}'
+    data = {
+        'bno': user_id,
+        'type': 'live'
+    }
+    req = requests.post(url, data=data)
+    result = req.json()
+    return result['CHANNEL']['BJID']
+
 def console_print(message):
     time = datetime.datetime.today().strftime('%Y-%m-%dT%H-%M-%S')
     print("[{}] {}".format(time, message))
@@ -62,10 +85,10 @@ def get_stream_m3u8_streamlink(user_login):
 
     return list
 
-def get_stream_m3u8_direct(user_login):
+def get_stream_m3u8_direct(user_id):
     url = 'https://live.afreecatv.com/afreeca/player_live_api.php'
     data = {
-        "bid": user_login,
+        "bid": user_id,
         "quality": "original",
         "type": "aid",
         "pwd": "",
@@ -85,7 +108,7 @@ def get_stream_m3u8_direct(user_login):
     elif result['CHANNEL']['RESULT'] == -6:
         # 로그인 필요
         get_cookie()
-        return get_stream_m3u8_direct(user_login)
+        return get_stream_m3u8_direct(user_id)
     else:
         # 알 수 없는 오류
         return None
@@ -119,20 +142,27 @@ def download_stream_legay(user_login, extension):
 console_print("Program started")
 
 try:
-    user_login_list = sys.argv[1:]
+    user_info_list = sys.argv[1:]
 except:
     console_print("Please input user login")
     exit()
 
-if len(user_login_list) == 0:
+if len(user_info_list) == 0:
     console_print("streamer nickname is not exist")
     exit()
 
-if len(user_login_list) > 1:
+if len(user_info_list) > 1:
     console_print("only one streamer nickname is allowed")
     exit()
 
-user_login = user_login_list[0]
+user_info = user_info_list[0]
+
+if id_or_login_detect(user_info):
+    user_id = user_info
+    user_login = get_login_from_id(user_id)
+else:
+    user_login = user_info
+    user_id = get_id_from_login(user_login)
 
 repeat_check = True
 latest_error = ""
@@ -143,19 +173,19 @@ if not os.path.exists("{}".format(user_login)):
 while True:
     try:
         if repeat_check:
-            console_print("[{user_login}] Waiting to start streaming".format(user_login=user_login))
+            console_print("[{user_login}] Waiting to start streaming".format(user_login=get_login_from_id(user_id)))
             repeat_check = False
         
-        stream_m3u8 = get_stream_m3u8_direct(user_login)
+        stream_m3u8 = get_stream_m3u8_direct(user_id)
         if stream_m3u8 is not None:
-            console_print("[{user_login}] Stream started".format(user_login=user_login))
+            console_print("[{user_login}] Stream started".format(user_login=get_login_from_id(user_id)))
             try:
-                download_stream_m3u8_legacy(user_login, stream_m3u8, "ts")
+                download_stream_m3u8_legacy(get_login_from_id(user_id), stream_m3u8, "ts")
             except Exception as e:
                 # print("Error: {}".format(e))
                 continue
 
-            console_print("[{user_login}] Stream ended".format(user_login=user_login))
+            console_print("[{user_login}] Stream ended".format(user_login=get_login_from_id(user_id)))
             repeat_check = True
 
     except Exception as e:

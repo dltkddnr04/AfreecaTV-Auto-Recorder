@@ -2,6 +2,7 @@ import requests
 
 USERNAME = "" # 계정 아이디
 PASSWORD = "" # 계정 비번
+STREAM_ID = "" # 방송 계정 내부 아이디값
 STREAM_USERNAME = "" # 방송 아이디
 STREAM_PASSWORD = "" # 비번방 비번
 QUALITY = "original" # original, hd, sd
@@ -22,12 +23,21 @@ data = {
 req = requests.post(url, data=data)
 cookies = req.cookies
 cookie_dict = requests.utils.dict_from_cookiejar(cookies)
-print(cookie_dict)
+# print(cookie_dict)
 
 # m3u8 url 요청
 url = 'https://live.afreecatv.com/afreeca/player_live_api.php'
+# 방송 내부 아이디로 방송 정보를 가져옴
 data = {
     "bid": STREAM_USERNAME,
+    "quality": QUALITY,
+    "type": "aid",
+    "pwd": STREAM_PASSWORD,
+    "stream_type": "common",
+}
+# 방송 아이디로 방송 정보를 가져옴
+data = {
+    "bno": STREAM_ID,
     "quality": QUALITY,
     "type": "aid",
     "pwd": STREAM_PASSWORD,
