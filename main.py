@@ -29,7 +29,7 @@ def get_id_from_login(user_login):
     return result['CHANNEL']['BNO']
 
 def get_login_from_id(user_id):
-    url = f'https://live.afreecatv.com/afreeca/player_live_api.php?bno={user_login}'
+    url = f'https://live.afreecatv.com/afreeca/player_live_api.php?bno={user_id}'
     data = {
         'bno': user_id,
         'type': 'live'
@@ -176,7 +176,7 @@ while True:
             console_print("[{user_login}] Waiting to start streaming".format(user_login=get_login_from_id(user_id)))
             repeat_check = False
         
-        stream_m3u8 = get_stream_m3u8_direct(user_id)
+        stream_m3u8 = get_stream_m3u8_direct(get_login_from_id(user_id))
         if stream_m3u8 is not None:
             console_print("[{user_login}] Stream started".format(user_login=get_login_from_id(user_id)))
             try:
