@@ -29,7 +29,7 @@ cookie_dict = requests.utils.dict_from_cookiejar(cookies)
 url = 'https://live.afreecatv.com/afreeca/player_live_api.php'
 # 방송 내부 아이디로 방송 정보를 가져옴
 data = {
-    "bid": STREAM_USERNAME,
+    "bno": STREAM_ID,
     "quality": QUALITY,
     "type": "aid",
     "pwd": STREAM_PASSWORD,
@@ -37,7 +37,7 @@ data = {
 }
 # 방송 아이디로 방송 정보를 가져옴
 data = {
-    "bno": STREAM_ID,
+    "bid": STREAM_USERNAME,
     "quality": QUALITY,
     "type": "aid",
     "pwd": STREAM_PASSWORD,
