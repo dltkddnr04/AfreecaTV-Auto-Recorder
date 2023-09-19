@@ -60,10 +60,10 @@ def get_cookie():
     cookies = req.cookies
     cookie_dict = requests.utils.dict_from_cookiejar(cookies)
 
-def stream_detect(user_login):
-    url = f'https://live.afreecatv.com/afreeca/player_live_api.php?bjid={user_login}'
+def stream_detect(user_id):
+    url = f'https://live.afreecatv.com/afreeca/player_live_api.php'
     data = {
-        'bid': user_login,
+        'bno': user_id,
         'type': 'live'
     }
 
@@ -125,7 +125,7 @@ def download_stream_m3u8_legacy(user_login, m3u8_url, extension):
         CREATE_NO_WINDOW = 0x08000000
         subprocess.run(["streamlink", m3u8_url, "best", "-o", path], creationflags=CREATE_NO_WINDOW)
     else:
-        subprocess.run(["streamlink", m3u8_url, "best", "-o", path])
+        subprocess.run(["streamlink", m3u8_url, "best", "-o", path])#, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     return
 
 def download_stream_legay(user_login, extension):
