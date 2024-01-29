@@ -19,22 +19,24 @@ def id_or_login_detect(value):
     return value.isnumeric()
 
 def get_id_from_login(user_login):
+    get_cookie()
     url = f'https://live.afreecatv.com/afreeca/player_live_api.php?bid={user_login}'
     data = {
         'bid': user_login,
         'type': 'live'
     }
-    req = requests.post(url, data=data)
+    req = requests.post(url, data=data, cookies=cookie_dict)
     result = req.json()
     return result['CHANNEL']['BNO']
 
 def get_login_from_id(user_id):
+    get_cookie()
     url = f'https://live.afreecatv.com/afreeca/player_live_api.php?bno={user_id}'
     data = {
         'bno': user_id,
         'type': 'live'
     }
-    req = requests.post(url, data=data)
+    req = requests.post(url, data=data, cookies=cookie_dict)
     result = req.json()
     return result['CHANNEL']['BJID']
 
@@ -157,12 +159,14 @@ if len(user_info_list) > 1:
 
 user_info = user_info_list[0]
 
-if id_or_login_detect(user_info):
-    user_id = user_info
-    user_login = get_login_from_id(user_id)
-else:
-    user_login = user_info
-    user_id = get_id_from_login(user_login)
+# if id_or_login_detect(user_info):
+#     user_id = user_info
+#     user_login = get_login_from_id(user_id)
+# else:
+#     user_login = user_info
+#     user_id = get_id_from_login(user_login)
+
+user_login = user_info
 
 repeat_check = True
 latest_error = ""
@@ -173,23 +177,23 @@ if not os.path.exists("{}".format(user_login)):
 while True:
     try:
         if repeat_check:
-            console_print("[{user_login}] Waiting to start streaming".format(user_login=get_login_from_id(user_id)))
+            console_print("[{user_login}] Waiting to start streaming".format(user_login=user_login))
             repeat_check = False
         
-        stream_m3u8 = get_stream_m3u8_direct(get_login_from_id(user_id))
+        stream_m3u8 = get_stream_m3u8_direct(user_login)
         if stream_m3u8 is not None:
-            console_print("[{user_login}] Stream started".format(user_login=get_login_from_id(user_id)))
+            console_print("[{user_login}] Stream started".format(user_login=user_login))
             try:
-                download_stream_m3u8_legacy(get_login_from_id(user_id), stream_m3u8, "ts")
+                download_stream_m3u8_legacy(user_login, stream_m3u8, "ts")
             except Exception as e:
                 # print("Error: {}".format(e))
                 continue
 
-            console_print("[{user_login}] Stream ended".format(user_login=get_login_from_id(user_id)))
+            console_print("[{user_login}] Stream ended".format(user_login=user_login))
             repeat_check = True
 
     except Exception as e:
-        if latest_error != e:
+        if latest_error != e or 1==1:
             console_print("Error: {}".format(e))
             latest_error = e
 
