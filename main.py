@@ -150,8 +150,9 @@ except:
     exit()
 
 if len(user_info_list) == 0:
-    console_print("streamer nickname is not exist")
-    exit()
+    user_info = input("Input streamer nickname(if you want to exit, press enter): ")
+    if user_info == "":
+        exit()
 
 if len(user_info_list) > 1:
     console_print("only one streamer nickname is allowed")
