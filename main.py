@@ -8,15 +8,47 @@ import streamlink
 import platform
 import subprocess
 
-with open('config.json', 'r') as f:
-    config = json.load(f)
-    USER_NAME = config['user_name']
-    USER_PASSWORD = config['user_password']
+
+def console_print(message):
+    time = datetime.datetime.today().strftime('%Y-%m-%dT%H-%M-%S')
+    print("[{}] {}".format(time, message))
+
+
+USER_NAME = None
+USER_PASSWORD = None
+
+if "USER_NAME" in os.environ.keys() and "USER_PASSWORD" in os.environ.keys():
+    USER_NAME = os.environ["USER_NAME"]
+    USER_PASSWORD = os.environ["USER_PASSWORD"]
+else:
+    try:
+        with open("config.json") as fp:
+            user_config = json.load(fp)
+            USER_NAME = user_config["USER_NAME"]
+            USER_PASSWORD = user_config["USER_PASSWORD"]
+    except FileNotFoundError:
+        console_print("""Environment variables are not set, and config.json does not exist.
+        Set environment variable[USER_NAME, USER_PASSWORD] or create config.json from config-sample.json
+                      """)
+        exit(-1)
+    except IOError as e:
+        console_print("IO Error occurred while reading config.json. please check your file")
+        console_print("[Cause] : {e}".format(e=e))
+        exit(-1)
+    except Exception as e:
+        console_print("Unknown Error occurred while reading config.json. please check your file")
+        console_print("[Cause] : {e}".format(e=e))
+        exit(-1)
+
+
+RETRY_INTERVAL = int(os.getenv("RETRY_INTERVAL", 60))
 
 cookie_dict = None
 
+
 def id_or_login_detect(value):
     return value.isnumeric()
+
 
 def get_id_from_login(user_login):
     get_cookie()
@@ -29,6 +61,7 @@ def get_id_from_login(user_login):
     result = req.json()
     return result['CHANNEL']['BNO']
 
+
 def get_login_from_id(user_id):
     get_cookie()
     url = f'https://live.afreecatv.com/afreeca/player_live_api.php?bno={user_id}'
@@ -40,9 +73,6 @@ def get_login_from_id(user_id):
     result = req.json()
     return result['CHANNEL']['BJID']
 
-def console_print(message):
-    time = datetime.datetime.today().strftime('%Y-%m-%dT%H-%M-%S')
-    print("[{}] {}".format(time, message))
 
 def get_cookie():
     global cookie_dict
@@ -62,6 +92,7 @@ def get_cookie():
     cookies = req.cookies
     cookie_dict = requests.utils.dict_from_cookiejar(cookies)
 
+
 def stream_detect(user_id):
     url = f'https://live.afreecatv.com/afreeca/player_live_api.php'
     data = {
@@ -77,6 +108,7 @@ def stream_detect(user_id):
     else:
         return False
 
+
 def get_stream_m3u8_streamlink(user_login):
     stream_url = "play.afreecatv.com/" + user_login
     streams = streamlink.streams(stream_url)
@@ -86,6 +118,7 @@ def get_stream_m3u8_streamlink(user_login):
         list[key] = value.url
 
     return list
+
 
 def get_stream_m3u8_direct(user_id):
     url = 'https://live.afreecatv.com/afreeca/player_live_api.php'
@@ -115,10 +148,12 @@ def get_stream_m3u8_direct(user_id):
         # 알 수 없는 오류
         return None
 
+
 def basic_file_info(user_login, extension):
     date = datetime.datetime.today().strftime('%Y-%m-%dT%H-%M-%S')
     path = './' + user_login + '/' + date + '.' + extension
     return path
+
 
 def download_stream_m3u8_legacy(user_login, m3u8_url, extension):
     path = basic_file_info(user_login, extension)
@@ -130,6 +165,7 @@ def download_stream_m3u8_legacy(user_login, m3u8_url, extension):
         subprocess.run(["streamlink", m3u8_url, "best", "-o", path])#, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     return
 
+
 def download_stream_legay(user_login, extension):
     path = basic_file_info(user_login, extension)
     stream_url = 'https://play.afreecatv.com/' + user_login
@@ -140,6 +176,7 @@ def download_stream_legay(user_login, extension):
     else:
         subprocess.run(["streamlink", stream_url, "best", "-o", path, "--afreeca-username", USER_NAME, "--afreeca-password", USER_PASSWORD, "--afreeca-purge-credentials"])
     return
+
 
 console_print("Program started")
 
@@ -187,7 +224,7 @@ while True:
             try:
                 download_stream_m3u8_legacy(user_login, stream_m3u8, "ts")
             except Exception as e:
-                # print("Error: {}".format(e))
+                print("Error: {}".format(e))
                 continue
 
             console_print("[{user_login}] Stream ended".format(user_login=user_login))
@@ -198,4 +235,4 @@ while True:
             console_print("Error: {}".format(e))
             latest_error = e
 
-    time.sleep(2)
+    time.sleep(RETRY_INTERVAL)
