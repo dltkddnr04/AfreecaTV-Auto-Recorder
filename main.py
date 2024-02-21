@@ -160,9 +160,16 @@ def download_stream_m3u8_legacy(user_login, m3u8_url, extension):
 
     if platform.system() == "Windows":
         CREATE_NO_WINDOW = 0x08000000
-        subprocess.run(["streamlink", m3u8_url, "best", "-o", path], creationflags=CREATE_NO_WINDOW)
+        subprocess.run(
+            ["streamlink", "--stream-segment-threads", "5", "--stream-segment-attempts", "5", "--hls-live-restart",
+             "--afreeca-username", USER_NAME, "--afreeca-password", USER_PASSWORD, m3u8_url, "best", "--stream-segment-losscheck",
+             path, "-o", path], creationflags=CREATE_NO_WINDOW)
     else:
-        subprocess.run(["streamlink", m3u8_url, "best", "-o", path])#, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        subprocess.run(
+            ["streamlink", "--stream-segment-threads", "5", "--stream-segment-attempts", "5", "--hls-live-restart",
+             "--afreeca-username", USER_NAME, "--afreeca-password", USER_PASSWORD, m3u8_url, "best",
+             "--stream-segment-losscheck",
+             path, "-o", path])#, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     return
 
 
