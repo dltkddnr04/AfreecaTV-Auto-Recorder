@@ -1,12 +1,12 @@
 import requests
 import json
 
-# user_login = 'berryoonna'
-user_id = '248302062'
-url = f'https://live.afreecatv.com/afreeca/player_live_api.php'
+user_login = ''
+url = f'https://live.sooplive.co.kr/afreeca/player_live_api.php'
+
 data = {
-    'bno': user_id,
-    'type': 'live'
+    'bid': user_login,
+    'type': 'live',
 }
 
 req = requests.post(url, data=data)

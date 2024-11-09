@@ -8,7 +8,7 @@ STREAM_PASSWORD = "" # 비번방 비번
 QUALITY = "original" # original, hd, sd
 
 # 성인방송 시청을 위한 세션 생성
-url = "https://login.afreecatv.com/app/LoginAction.php"
+url = "https://login.sooplive.co.kr/app/LoginAction.php"
 data = {
     "szWork": "login",
     "szType": "json",
@@ -23,10 +23,10 @@ data = {
 req = requests.post(url, data=data)
 cookies = req.cookies
 cookie_dict = requests.utils.dict_from_cookiejar(cookies)
-# print(cookie_dict)
+print(cookie_dict)
 
 # m3u8 url 요청
-url = 'https://live.afreecatv.com/afreeca/player_live_api.php'
+url = f'https://live.sooplive.co.kr/afreeca/player_live_api.php'
 # 방송 내부 아이디로 방송 정보를 가져옴
 data = {
     "bno": STREAM_ID,
@@ -50,7 +50,7 @@ result = req.json()
 if result['CHANNEL']['RESULT'] == 0:
     print("방송중이 아님")
 elif result['CHANNEL']['RESULT'] == 1:
-    m3u8_url = "https://live-global-cdn-v02.afreecatv.com/live-stm-16/auth_playlist.m3u8?aid=" + result['CHANNEL']['AID']
+    m3u8_url = f"https://live-global-cdn-v02.sooplive.co.kr/live-stm-16/auth_playlist.m3u8?aaid={result['CHANNEL']['AID']}"
     print(m3u8_url)
 elif result['CHANNEL']['RESULT'] == -6:
     print("로그인 필요")
