@@ -13,6 +13,7 @@ with open('config.json', 'r') as f:
     USER_PASSWORD = config['user_password']
 
 cookie_dict = None
+server_domain = "sooplive.co.kr"
 
 def id_or_login_detect(value):
     return value.isnumeric()
