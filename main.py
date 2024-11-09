@@ -20,7 +20,7 @@ def id_or_login_detect(value):
 
 def get_id_from_login(user_login):
     get_cookie()
-    url = f'https://live.sooplive.co.kr/afreeca/player_live_api.php?bid={user_login}'
+    url = f'https://live.{server_domain}/afreeca/player_live_api.php?bid={user_login}'
     data = {
         'bid': user_login,
         'type': 'live'
@@ -31,7 +31,7 @@ def get_id_from_login(user_login):
 
 def get_login_from_id(user_id):
     get_cookie()
-    url = f'https://live.sooplive.co.kr/afreeca/player_live_api.php?bno={user_id}'
+    url = f'https://live.{server_domain}/afreeca/player_live_api.php?bno={user_id}'
     data = {
         'bno': user_id,
         'type': 'live'
@@ -46,7 +46,7 @@ def console_print(message):
 
 def get_cookie():
     global cookie_dict
-    url = "https://login.sooplive.co.kr/app/LoginAction.php"
+    url = "https://login.{server_domain}/app/LoginAction.php"
     data = {
         "szWork": "login",
         "szType": "json",
@@ -63,7 +63,7 @@ def get_cookie():
     cookie_dict = requests.utils.dict_from_cookiejar(cookies)
 
 def stream_detect(user_id):
-    url = f'https://live.sooplive.co.kr/afreeca/player_live_api.php'
+    url = f'https://live.{server_domain}/afreeca/player_live_api.php'
     data = {
         'bno': user_id,
         'type': 'live'
@@ -78,7 +78,7 @@ def stream_detect(user_id):
         return False
 
 def get_stream_m3u8_direct(user_id):
-    url = 'https://live.sooplive.co.kr/afreeca/player_live_api.php'
+    url = 'https://live.{server_domain}/afreeca/player_live_api.php'
     data = {
         "bid": user_id,
         "quality": "original",
@@ -95,7 +95,7 @@ def get_stream_m3u8_direct(user_id):
         return None
     elif result['CHANNEL']['RESULT'] == 1:
         # 방송중
-        m3u8_url = "https://live-global-cdn-v02.sooplive.co.kr/live-stm-16/auth_playlist.m3u8?aid=" + result['CHANNEL']['AID']
+        m3u8_url = "https://live-global-cdn-v02.{server_domain}/live-stm-16/auth_playlist.m3u8?aid=" + result['CHANNEL']['AID']
         return m3u8_url
     elif result['CHANNEL']['RESULT'] == -6:
         # 로그인 필요
@@ -122,7 +122,7 @@ def download_stream_m3u8_legacy(user_login, m3u8_url, extension):
 
 def download_stream_legay(user_login, extension):
     path = basic_file_info(user_login, extension)
-    stream_url = 'https://play.sooplive.co.kr/' + user_login
+    stream_url = 'https://play.{server_domain}/' + user_login
 
     if platform.system() == "Windows":
         CREATE_NO_WINDOW = 0x08000000
