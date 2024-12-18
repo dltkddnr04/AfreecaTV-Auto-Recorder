@@ -6,6 +6,8 @@ import time
 import datetime
 import platform
 import subprocess
+import threading
+import signal
 
 with open('config.json', 'r') as f:
     config = json.load(f)
@@ -46,7 +48,7 @@ def console_print(message):
 
 def get_cookie():
     global cookie_dict
-    url = "https://login.{server_domain}/app/LoginAction.php"
+    url = f"https://login.{server_domain}/app/LoginAction.php"
     data = {
         "szWork": "login",
         "szType": "json",
@@ -78,7 +80,7 @@ def stream_detect(user_id):
         return False
 
 def get_stream_m3u8_direct(user_id):
-    url = 'https://live.{server_domain}/afreeca/player_live_api.php'
+    url = f'https://live.{server_domain}/afreeca/player_live_api.php'
     data = {
         "bid": user_id,
         "quality": "original",
@@ -95,7 +97,7 @@ def get_stream_m3u8_direct(user_id):
         return None
     elif result['CHANNEL']['RESULT'] == 1:
         # 방송중
-        m3u8_url = "https://live-global-cdn-v02.{server_domain}/live-stm-16/auth_playlist.m3u8?aid=" + result['CHANNEL']['AID']
+        m3u8_url = f"https://live-global-cdn-v02.{server_domain}/live-stm-16/auth_playlist.m3u8?aid=" + result['CHANNEL']['AID']
         return m3u8_url
     elif result['CHANNEL']['RESULT'] == -6:
         # 로그인 필요
@@ -122,7 +124,7 @@ def download_stream_m3u8_legacy(user_login, m3u8_url, extension):
 
 def download_stream_legay(user_login, extension):
     path = basic_file_info(user_login, extension)
-    stream_url = 'https://play.{server_domain}/' + user_login
+    stream_url = f'https://play.{server_domain}/' + user_login
 
     if platform.system() == "Windows":
         CREATE_NO_WINDOW = 0x08000000
@@ -163,27 +165,48 @@ latest_error = ""
 if not os.path.exists("{}".format(user_login)):
     os.makedirs("{}".format(user_login))
 
-while True:
-    try:
-        if repeat_check:
-            console_print("[{user_login}] Waiting to start streaming".format(user_login=user_login))
-            repeat_check = False
-        
+# 다운로드 프로세스 관리 변수
+download_process = None
+stop_download = False  # 종료 플래그
+
+def input_thread():
+    global stop_download, download_process
+    while True:
+        user_input = input("Press 'q' to stop downloading: ").strip().lower()
+        if user_input == 'q':
+            stop_download = True
+            if download_process:
+                # 다운로드 프로세스를 강제 종료
+                download_process.terminate()
+                console_print("Download process terminated.")
+            break
+
+# 사용자 입력 스레드 시작
+threading.Thread(target=input_thread, daemon=True).start()
+
+try:
+    while not stop_download:
+        # 스트림 확인 및 다운로드 시작
         stream_m3u8 = get_stream_m3u8_direct(user_login)
         if stream_m3u8 is not None:
-            console_print("[{user_login}] Stream started".format(user_login=user_login))
-            try:
-                download_stream_m3u8_legacy(user_login, stream_m3u8, "ts")
-            except Exception as e:
-                # print("Error: {}".format(e))
-                continue
+            console_print(f"[{user_login}] Stream started")
+            
+            # 비차단 방식으로 subprocess 실행
+            path = basic_file_info(user_login, "ts")
+            command = [
+                "streamlink", stream_m3u8, "best", "-o", path
+            ]
+            download_process = subprocess.Popen(command)
 
-            console_print("[{user_login}] Stream ended".format(user_login=user_login))
-            repeat_check = True
+            # 다운로드가 종료될 때까지 대기
+            download_process.wait()
 
-    except Exception as e:
-        if latest_error != e or 1==1:
-            console_print("Error: {}".format(e))
-            latest_error = e
+            console_print(f"[{user_login}] Stream ended")
+            download_process = None  # 다운로드 프로세스 초기화
 
-    time.sleep(2)
+        time.sleep(2)
+except KeyboardInterrupt:
+    stop_download = True
+    if download_process:
+        download_process.terminate()
+    console_print("Program interrupted by user.")
