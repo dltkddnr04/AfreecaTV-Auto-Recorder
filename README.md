@@ -21,3 +21,6 @@ python3 main.py 방송인의_닉네임
 - Python 3.6 이상
 - requests
 - [streamlink](https://streamlink.github.io)
+
+## 라이선스
+MIT License. 자세한 내용은 [LICENSE](LICENSE)를 참고하세요.
