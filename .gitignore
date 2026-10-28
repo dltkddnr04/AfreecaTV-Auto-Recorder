@@ -1,7 +1,11 @@
 .DS_Store
 __pycache__/
 *.py[cod]
-*.ts
-config.json
-.pytest_cache/
 .venv/
+.pytest_cache/
+config.json
+*.capture
+*.raw
+*.ts
+*.mp4
+*.mkv

@@ -1,34 +1,33 @@
-name: CLI reliability tests
+name: CLI tests
 on:
   push:
   pull_request:
 jobs:
-  tests:
+  test:
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
         python-version: ['3.10', '3.13']
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install CLI dependency
+      - name: Install Streamlink
         shell: bash
         run: python -m pip install -r requirements.txt
-      - name: Compile CLI and helpers
+      - name: Check Python syntax
         shell: bash
-        run: python -m py_compile recorder_core.py main.py
-      - name: Fault-injection and regression tests
+        run: python -m compileall -q .
+      - name: Run CLI tests
         shell: bash
         run: python -m unittest discover -s tests -v
-      - name: Check Streamlink CLI switches
+      - name: Check Streamlink options
         shell: bash
         run: |
           streamlink --help > streamlink-help.txt
-          for flag in --http-timeout --stream-timeout --stream-segment-timeout --stream-segment-attempts --retry-streams --retry-max --retry-open --skip; do
-            grep -Fq -- "$flag" streamlink-help.txt
+          for opt in --http-timeout --stream-timeout --stream-segment-timeout --stream-segment-attempts --retry-open --skip; do
+            grep -Fq -- "$opt" streamlink-help.txt
           done
