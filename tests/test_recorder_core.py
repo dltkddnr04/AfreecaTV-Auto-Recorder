@@ -179,5 +179,23 @@ class CoreTests(unittest.TestCase):
         self.assertEqual(rc.serve(["../outside"], lambda n: "https://example.test/" + n), 2)
 
 
+    def test_keyboard_interrupt_during_thread_start_is_clean(self):
+        with patch.object(rc.shutil, "which", return_value="/fake/streamlink"), \
+             patch.object(rc.threading.Thread, "start", side_effect=KeyboardInterrupt), \
+             patch.object(rc.signal, "signal"):
+            self.assertEqual(
+                rc.serve(["channel"], lambda n: "https://example.test/" + n, settings=settings()),
+                0,
+            )
+
+    def test_worker_thread_start_failure_returns_error(self):
+        with patch.object(rc.shutil, "which", return_value="/fake/streamlink"), \
+             patch.object(rc.threading.Thread, "start", side_effect=RuntimeError("no threads")), \
+             patch.object(rc.signal, "signal"):
+            self.assertEqual(
+                rc.serve(["channel"], lambda n: "https://example.test/" + n, settings=settings()),
+                1,
+            )
+
 if __name__ == "__main__":
     unittest.main()

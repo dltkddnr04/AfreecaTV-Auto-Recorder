@@ -267,7 +267,10 @@ class Recorder:
             reason = f"Streamlink launch failure: {exc}"
         finally:
             if proc is not None:
-                stop_child(proc)
+                try:
+                    stop_child(proc)
+                except Exception as exc:
+                    self.report(f"Child process shutdown failure: {exc}")
             self._child = None
         saved = self.finalize(staging)
         if reason and reason != "stopped":
@@ -291,6 +294,7 @@ class Recorder:
             while not self.stop_event.is_set():
                 try:
                     self._check_storage()
+                    self.recover()
                     self._attempt()
                 except (OSError, ValueError, RuntimeError) as exc:
                     self.error = f"Recorder error: {exc}"
@@ -353,6 +357,7 @@ def serve(channels, url_factory, output_root=None, extra_args=(), settings=None)
         thread.start()
         log(f"[{name}] Worker started")
 
+    return_code = 0
     try:
         for name in names:
             spawn(name)
@@ -368,6 +373,7 @@ def serve(channels, url_factory, output_root=None, extra_args=(), settings=None)
                 next_restart[name] = time.monotonic() + 10
     except KeyboardInterrupt:
         stopping.set()
+        return_code = 0
     except Exception as exc:
         log(f"Fatal CLI supervisor failure: {exc}")
         return_code = 1
@@ -378,7 +384,13 @@ def serve(channels, url_factory, output_root=None, extra_args=(), settings=None)
         for worker in list(workers.values()):
             worker.stop()
         for thread in list(threads.values()):
-            thread.join(timeout=20)
+            if thread.ident is None:
+                continue
+            try:
+                thread.join(timeout=20)
+            except RuntimeError as exc:
+                log(f"Unable to join worker thread: {exc}")
+                return_code = 1
         alive = [name for name, thread in threads.items() if thread.is_alive()]
         if alive:
             log(f"Shutdown incomplete; workers still alive: {', '.join(alive)}")
