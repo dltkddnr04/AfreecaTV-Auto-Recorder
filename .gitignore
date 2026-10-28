@@ -1,4 +1,7 @@
 .DS_Store
-__pycache__
+__pycache__/
+*.py[cod]
 *.ts
 config.json
+.pytest_cache/
+.venv/
