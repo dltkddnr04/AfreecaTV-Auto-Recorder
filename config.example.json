@@ -1,4 +1,6 @@
 {
   "user_name": "",
-  "user_password": ""
+  "user_password": "",
+  "stream_password": "",
+  "transport": "auto"
 }

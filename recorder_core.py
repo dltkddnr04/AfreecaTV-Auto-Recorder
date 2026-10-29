@@ -40,13 +40,13 @@ def settings():
     }
 
 
-def command(url, destination, config, extra=()):
+def command(url, destination, config, extra=(), stream="best"):
     # Streamlink owns source discovery, HLS, retries within segments, and CDN.
     return [
         "streamlink", "--http-timeout", str(config["http"]),
         "--stream-timeout", "60", "--stream-segment-timeout", "20",
         "--stream-segment-attempts", "5", "--retry-open", "2",
-        "--skip", *extra, url, "best", "--output", str(destination),
+        "--skip", *extra, url, stream, "--output", str(destination),
     ]
 
 
@@ -102,14 +102,14 @@ def stop_process(proc):
         pass
 
 
-def record(url, channel, folder, stop, config, extra):
+def record(url, channel, folder, stop, config, extra, stream="best", child_env=None):
     capture = folder / f"{datetime.now():%Y%m%d-%H%M%S}-{uuid.uuid4().hex}.capture"
     proc = None
     problem = None
     try:
         proc = subprocess.Popen(
-            command(url, capture, config, extra), stdin=subprocess.DEVNULL,
-            **process_flags(),
+            command(url, capture, config, extra, stream=stream),
+            stdin=subprocess.DEVNULL, env=child_env, **process_flags(),
         )
         start = growth = time.monotonic()
         last_size = 0
@@ -137,19 +137,19 @@ def record(url, channel, folder, stop, config, extra):
         raise RuntimeError(f"Streamlink exit code {proc.returncode}")
 
 
-def worker(channel, url, stop, config, extra, root):
+def worker(channel, url, stop, config, extra, root, stream="best", child_env=None):
     folder = root / channel
     while not stop.is_set():
         try:
             folder.mkdir(parents=True, exist_ok=True)
-            record(url, channel, folder, stop, config, extra)
+            record(url, channel, folder, stop, config, extra, stream=stream, child_env=child_env)
         except Exception as exc:
             # Errors must not silently terminate this channel's only monitor.
             print(f"[{channel}] {type(exc).__name__}: {exc}", file=sys.stderr, flush=True)
         stop.wait(config["interval"])
 
 
-def serve(channels, url_factory, extra_args=(), output_root=None):
+def serve(channels, url_factory, extra_args=(), output_root=None, stream="best", child_env=None):
     try:
         unique = list(dict.fromkeys(channel_id(name) for name in channels))
         if not unique:
@@ -184,7 +184,7 @@ def serve(channels, url_factory, extra_args=(), output_root=None):
                         print(f"[{name}] Recording worker restarted", file=sys.stderr, flush=True)
                     thread = threading.Thread(
                         target=worker,
-                        args=(name, url_factory(name), stop, config, extra_args, root),
+                        args=(name, url_factory(name), stop, config, extra_args, root, stream, child_env),
                         name=f"record-{name}", daemon=True,
                     )
                     threads[name] = thread
