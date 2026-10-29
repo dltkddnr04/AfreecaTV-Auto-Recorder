@@ -27,7 +27,7 @@ class SoopGridCLITests(unittest.TestCase):
                 ("legacy-id", "legacy-secret", "broadcast-secret", "grid"),
             )
 
-    def test_canonical_env_takes_priority(self):
+    def test_compatibility_env_takes_priority_over_old_aliases(self):
         with tempfile.TemporaryDirectory() as folder, patch.dict(os.environ, {
             "SOOP_ACCOUNT_ID": "new-id", "SOOP_ACCOUNT_PASSWORD": "new-password",
             "SOOP_STREAM_PASSWORD": "stream", "SOOP_GRID_TRANSPORT": "hls",
@@ -45,7 +45,6 @@ class SoopGridCLITests(unittest.TestCase):
         for env in (
             {"SOOP_ACCOUNT_ID": "only"},
             {"SOOP_ACCOUNT_PASSWORD": "only"},
-            {"SOOP_STREAM_PASSWORD": "broadcast-only"},
         ):
             with self.subTest(env=env), tempfile.TemporaryDirectory() as folder, \
                  patch.dict(os.environ, env, clear=True):
@@ -141,9 +140,12 @@ class SoopGridCLITests(unittest.TestCase):
             main.main(["channel"])
             self.assertNotIn("SOOP_ACCOUNT_PASSWORD", os.environ)
         kwargs = serve.call_args.kwargs
-        self.assertEqual(kwargs["child_env"]["SOOP_ACCOUNT_ID"], "my-id")
-        self.assertEqual(kwargs["child_env"]["SOOP_ACCOUNT_PASSWORD"], "super-secret")
-        self.assertEqual(kwargs["child_env"]["SOOP_STREAM_PASSWORD"], "broadcast-password")
+        self.assertEqual(kwargs["child_env"]["SOOP_GRID_USERNAME"], "my-id")
+        self.assertEqual(kwargs["child_env"]["SOOP_GRID_PASSWORD"], "super-secret")
+        self.assertEqual(kwargs["child_env"]["SOOP_GRID_STREAM_PASSWORD"], "broadcast-password")
+        self.assertNotIn("SOOP_ACCOUNT_ID", kwargs["child_env"])
+        self.assertNotIn("SOOP_ACCOUNT_PASSWORD", kwargs["child_env"])
+        self.assertNotIn("SOOP_STREAM_PASSWORD", kwargs["child_env"])
         self.assertNotIn("super-secret", str(kwargs["extra_args"]))
         self.assertNotIn("--config", kwargs["extra_args"])
 
@@ -170,6 +172,117 @@ class SoopGridCLITests(unittest.TestCase):
                 )
             self.assertEqual(popen.call_args.kwargs["env"], env)
             self.assertNotIn("hidden", " ".join(popen.call_args.args[0]))
+
+
+    def test_new_official_environment_overrides_compatibility_and_config(self):
+        with tempfile.TemporaryDirectory() as folder, patch.dict(os.environ, {
+            "SOOP_GRID_USERNAME": "new-user",
+            "SOOP_GRID_PASSWORD": "new-pass",
+            "SOOP_GRID_STREAM_PASSWORD": "new-stream",
+            "SOOP_ACCOUNT_ID": "old-user",
+            "SOOP_ACCOUNT_PASSWORD": "old-pass",
+            "SOOP_STREAM_PASSWORD": "old-stream",
+        }, clear=True):
+            (Path(folder) / "config.json").write_text(
+                json.dumps({"user_name": "config-user", "user_password": "config-pass",
+                            "stream_password": "config-stream"}), encoding="utf-8"
+            )
+            self.assertEqual(
+                main.load_options(folder), ("new-user", "new-pass", "new-stream", "auto")
+            )
+
+    def test_new_environment_explicit_empty_suppresses_legacy_values(self):
+        with tempfile.TemporaryDirectory() as folder, patch.dict(os.environ, {
+            "SOOP_GRID_USERNAME": "", "SOOP_GRID_PASSWORD": "",
+            "SOOP_GRID_STREAM_PASSWORD": "",
+            "SOOP_ACCOUNT_ID": "old-user", "SOOP_ACCOUNT_PASSWORD": "old-pass",
+            "SOOP_STREAM_PASSWORD": "old-stream",
+        }, clear=True):
+            self.assertEqual(main.load_options(folder), ("", "", "", "auto"))
+
+    def test_credential_pair_can_use_different_precedence_levels(self):
+        with tempfile.TemporaryDirectory() as folder, patch.dict(os.environ, {
+            "SOOP_GRID_USERNAME": "new-user",
+            "SOOP_ACCOUNT_PASSWORD": "compat-pass",
+        }, clear=True):
+            self.assertEqual(main.load_options(folder), ("new-user", "compat-pass", "", "auto"))
+
+    def test_canonical_account_suppresses_unpaired_legacy_credential(self):
+        with tempfile.TemporaryDirectory() as folder, patch.dict(os.environ, {
+            "SOOP_GRID_USERNAME": "new-user", "SOOP_GRID_PASSWORD": "new-pass",
+            "SOOP_ACCOUNT_ID": "legacy-without-password",
+        }, clear=True):
+            self.assertEqual(main.load_options(folder), ("new-user", "new-pass", "", "auto"))
+
+    def test_hls_stream_password_only_allowed_from_new_environment(self):
+        with patch.dict(os.environ, {"SOOP_GRID_STREAM_PASSWORD": "broadcast-secret"}, clear=True), \
+             patch.object(main, "plugin_available", return_value=True), \
+             patch.object(main, "serve", return_value=0) as recorder:
+            self.assertEqual(main.main(["channel", "--transport", "hls"]), 0)
+        self.assertEqual(recorder.call_args.kwargs["stream"], "best")
+        env = recorder.call_args.kwargs["child_env"]
+        self.assertEqual(env["SOOP_GRID_STREAM_PASSWORD"], "broadcast-secret")
+        self.assertNotIn("SOOP_GRID_USERNAME", env)
+        self.assertNotIn("SOOP_GRID_PASSWORD", env)
+
+    def test_hls_stream_password_only_allowed_from_old_environment(self):
+        with patch.dict(os.environ, {"SOOP_STREAM_PASSWORD": "legacy-secret"}, clear=True), \
+             patch.object(main, "plugin_available", return_value=True), \
+             patch.object(main, "serve", return_value=0) as recorder:
+            self.assertEqual(main.main(["channel", "--transport", "hls"]), 0)
+        self.assertEqual(
+            recorder.call_args.kwargs["child_env"]["SOOP_GRID_STREAM_PASSWORD"], "legacy-secret"
+        )
+        self.assertNotIn("SOOP_STREAM_PASSWORD", recorder.call_args.kwargs["child_env"])
+
+    def test_hls_password_only_from_config(self):
+        with tempfile.TemporaryDirectory() as folder, patch.dict(os.environ, {}, clear=True):
+            (Path(folder) / "config.json").write_text(
+                json.dumps({"stream_password": "config-secret", "transport": "hls"}),
+                encoding="utf-8",
+            )
+            self.assertEqual(main.load_options(folder), ("", "", "config-secret", "hls"))
+
+    def test_password_only_requires_hls_when_auto_or_grid(self):
+        for mode in ("auto", "grid"):
+            with self.subTest(mode=mode), \
+                 patch.dict(os.environ, {"SOOP_GRID_STREAM_PASSWORD": "broadcast-secret"}, clear=True), \
+                 patch.object(main, "plugin_available") as available, \
+                 patch.object(main, "serve") as recorder:
+                with self.assertRaises(SystemExit) as result:
+                    main.main(["channel", "--transport", mode])
+                self.assertEqual(result.exception.code, 2)
+                recorder.assert_not_called()
+                available.assert_not_called()
+
+    def test_cli_transport_override_allows_hls_password_only(self):
+        with patch.dict(os.environ, {
+            "SOOP_GRID_STREAM_PASSWORD": "broadcast-secret",
+            "SOOP_GRID_TRANSPORT": "grid",
+        }, clear=True), \
+             patch.object(main, "plugin_available", return_value=True), \
+             patch.object(main, "serve", return_value=0) as recorder:
+            self.assertEqual(main.main(["channel", "--transport", "hls"]), 0)
+        self.assertEqual(recorder.call_args.kwargs["extra_args"],
+                         ("--soop-grid-transport", "hls"))
+
+    def test_normalization_clears_inherited_old_aliases(self):
+        with patch.dict(os.environ, {
+            "SOOP_GRID_USERNAME": "new-id", "SOOP_GRID_PASSWORD": "new-pass",
+            "SOOP_ACCOUNT_ID": "old-id", "SOOP_ACCOUNT_PASSWORD": "old-pass",
+            "SOOP_USERNAME": "older-id", "SOOP_PASSWORD": "older-pass",
+            "SOOP_GRID_STREAM_PASSWORD": "",
+            "SOOP_STREAM_PASSWORD": "older-stream",
+        }, clear=True), \
+             patch.object(main, "plugin_available", return_value=True), \
+             patch.object(main, "serve", return_value=0) as recorder:
+            self.assertEqual(main.main(["channel"]), 0)
+        env = recorder.call_args.kwargs["child_env"]
+        self.assertEqual(env["SOOP_GRID_USERNAME"], "new-id")
+        self.assertEqual(env["SOOP_GRID_PASSWORD"], "new-pass")
+        for key in ("SOOP_ACCOUNT_ID", "SOOP_ACCOUNT_PASSWORD", "SOOP_USERNAME",
+                    "SOOP_PASSWORD", "SOOP_STREAM_PASSWORD", "SOOP_GRID_STREAM_PASSWORD"):
+            self.assertNotIn(key, env)
 
 
 if __name__ == "__main__":

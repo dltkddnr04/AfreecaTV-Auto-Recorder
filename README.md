@@ -43,16 +43,25 @@ python main.py CHANNEL_ID --transport hls
 공개 방송에는 계정이 필요하지 않습니다. 계정이 필요한 방송은 다음 환경변수를 설정합니다.
 
 ```sh
-export SOOP_ACCOUNT_ID='YOUR_ACCOUNT'
-export SOOP_ACCOUNT_PASSWORD='YOUR_PASSWORD'
-# 비밀번호 방송만 필요할 때:
-export SOOP_STREAM_PASSWORD='BROADCAST_PASSWORD'
+export SOOP_GRID_USERNAME='YOUR_ACCOUNT'
+export SOOP_GRID_PASSWORD='YOUR_PASSWORD'
+# 계정과 함께 방송 비밀번호가 필요하면:
+export SOOP_GRID_STREAM_PASSWORD='BROADCAST_PASSWORD'
 python main.py CHANNEL_ID
+
+# 계정 없이 방송 비밀번호만 필요한 경우에는 HLS 전용 모드 사용:
+# unset SOOP_GRID_USERNAME SOOP_GRID_PASSWORD
+# export SOOP_GRID_STREAM_PASSWORD='BROADCAST_PASSWORD'
+# python main.py CHANNEL_ID --transport hls
 ```
 
-또는 기존 `config.example.json`을 `config.json`으로 복사해 `user_name` / `user_password` (필요하면 `stream_password`)를 지정합니다. 이전 환경변수 `SOOP_USERNAME` / `SOOP_PASSWORD`도 호환됩니다. 전송 모드는 `--transport`, `SOOP_GRID_TRANSPORT`, `config.json`의 `transport` 순서로 적용합니다.
+또는 기존 `config.example.json`을 `config.json`으로 복사해 `user_name` / `user_password` (필요하면 `stream_password`)를 지정합니다.
 
-**중요:** 외부 플러그인은 내장 SOOP용 `--soop-username` / `--soop-password`를 읽지 않습니다. 이 CLI는 계정·방송 비밀번호를 플러그인이 지원하는 `SOOP_ACCOUNT_ID` / `SOOP_ACCOUNT_PASSWORD` / `SOOP_STREAM_PASSWORD`로 **Streamlink 자식 프로세스에만 전달**합니다. 비밀번호를 명령행 옵션이나 임시 설정 파일에 쓰지 않습니다.
+인증값은 **`SOOP_GRID_USERNAME` / `SOOP_GRID_PASSWORD` / `SOOP_GRID_STREAM_PASSWORD` → `SOOP_ACCOUNT_ID` / `SOOP_ACCOUNT_PASSWORD` / `SOOP_STREAM_PASSWORD` → 기존 `SOOP_USERNAME` / `SOOP_PASSWORD` → `config.json`** 순서로 각 항목별로 선택합니다. 우선순위가 높은 환경변수가 빈 문자열로 설정되어 있어도 하위 별칭으로 대체하지 않습니다. 전송 모드는 `--transport`, `SOOP_GRID_TRANSPORT`, `config.json`의 `transport` 순서로 적용합니다.
+
+**중요:** 외부 플러그인은 내장 SOOP용 `--soop-username` / `--soop-password`를 읽지 않습니다. 이 CLI는 설정값을 최신 **`SOOP_GRID_*` 정식 환경변수로 정규화해 Streamlink 자식 프로세스에만 전달**하며, 비밀번호를 명령행 옵션이나 임시 설정 파일에 쓰지 않습니다.
+
+**방송 비밀번호만 있는 경우** 최신 플러그인의 규칙에 따라 `--transport hls`에서만 허용합니다. `grid`/기본 `auto`에서는 계정 ID·계정 비밀번호 쌍이 함께 필요하며, 미충족 시 실행 전에 오류로 종료합니다.
 
 ## 장애 처리
 

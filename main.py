@@ -13,7 +13,7 @@ TRANSPORTS = ("auto", "grid", "hls")
 
 
 def load_options(project_dir):
-    """Read legacy config keys, but pass secrets via the plugin's environment API."""
+    """Normalize supported settings to the current soop_grid credential contract."""
     path = Path(project_dir) / "config.json"
     config = {}
     if path.is_file():
@@ -28,16 +28,18 @@ def load_options(project_dir):
                 return os.environ[name]
         return config.get(config_key, default)
 
-    account = option(("SOOP_ACCOUNT_ID", "SOOP_USERNAME"), "user_name")
-    password = option(("SOOP_ACCOUNT_PASSWORD", "SOOP_PASSWORD"), "user_password")
-    stream_password = option(("SOOP_STREAM_PASSWORD",), "stream_password")
+    # Follow the plugin's priority: canonical > compatibility alias > config.
+    # Presence (even an empty string) suppresses lower-priority values.
+    account = option(("SOOP_GRID_USERNAME", "SOOP_ACCOUNT_ID", "SOOP_USERNAME"), "user_name")
+    password = option(("SOOP_GRID_PASSWORD", "SOOP_ACCOUNT_PASSWORD", "SOOP_PASSWORD"), "user_password")
+    stream_password = option(("SOOP_GRID_STREAM_PASSWORD", "SOOP_STREAM_PASSWORD"), "stream_password")
     transport = option(("SOOP_GRID_TRANSPORT",), "transport", "auto")
     for name, value in (("user_name", account), ("user_password", password),
                         ("stream_password", stream_password), ("transport", transport)):
         if not isinstance(value, str) or "\x00" in value:
             raise ValueError(f"{name} must be a valid string")
-    if bool(account) != bool(password) or (stream_password and not account):
-        raise ValueError("SOOP account ID/password must be paired; stream password also needs an account")
+    if bool(account) != bool(password):
+        raise ValueError("SOOP account ID and password must be paired")
     if transport not in TRANSPORTS:
         raise ValueError("SOOP transport must be auto, grid or hls")
     return account, password, stream_password, transport
@@ -83,6 +85,10 @@ def main(argv=None):
         parser.error(f"Invalid SOOP configuration: {exc}")
 
     transport = args.transport or default_transport
+    # Native Grid requires account credentials for password-protected streams.
+    # The built-in SOOP plugin delegated to by hls permits stream-password only.
+    if stream_password and not account and transport != "hls":
+        parser.error("Broadcast-password-only mode requires --transport hls")
     if not plugin_available():
         print(
             "Required Streamlink plugin 'soop_grid' is unavailable. "
@@ -92,16 +98,21 @@ def main(argv=None):
         )
         return 2
 
-    # Plugin reads these exact environment variables. Never put passwords
-    # into process argv, a temporary config file, or diagnostic logging.
+    # Pass exactly one normalized credential namespace to the plugin.
+    # Remove inherited aliases to prevent stale settings from overriding config.
+    # Secrets never appear in process argv, temporary files, or logs.
     child_env = os.environ.copy()
-    for key in ("SOOP_ACCOUNT_ID", "SOOP_ACCOUNT_PASSWORD", "SOOP_STREAM_PASSWORD"):
+    for key in (
+        "SOOP_GRID_USERNAME", "SOOP_GRID_PASSWORD", "SOOP_GRID_STREAM_PASSWORD",
+        "SOOP_ACCOUNT_ID", "SOOP_ACCOUNT_PASSWORD", "SOOP_STREAM_PASSWORD",
+        "SOOP_USERNAME", "SOOP_PASSWORD",
+    ):
         child_env.pop(key, None)
     if account:
-        child_env["SOOP_ACCOUNT_ID"] = account
-        child_env["SOOP_ACCOUNT_PASSWORD"] = password
+        child_env["SOOP_GRID_USERNAME"] = account
+        child_env["SOOP_GRID_PASSWORD"] = password
     if stream_password:
-        child_env["SOOP_STREAM_PASSWORD"] = stream_password
+        child_env["SOOP_GRID_STREAM_PASSWORD"] = stream_password
 
     def channel_url(channel):
         url = f"https://play.sooplive.com/{channel}"
